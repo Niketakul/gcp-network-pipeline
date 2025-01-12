@@ -1,5 +1,4 @@
 name: GCP Terraform Workflow
-
 on:
   workflow_dispatch:
 permissions:
@@ -8,42 +7,35 @@ permissions:
   actions: read
   id-token: write
   
-
 env:
   GH_TOKEN: ${{ secrets.GCP_AUTHENTICATION }}
  
 jobs:
   detect-changes: 
-	runs-on: ubuntu-latest
-	outputs: 
-	  modified_dirs: $ {{steps.detect.outputs.modified_dirs }}
-	steps: 
-	  - name: Checkout Repository
-	    uses: actions/checkout@v3
-     
-    - name: Detect modified directroies
-	    id: detect
-	    run: | 
-		# List of all changed files
-	      MODIFIED= $(git diff --name-only HEAD~1 HEAD)
-		
-		# Initialize an empty array for directories
-	      MODIFIED_DIRS=()
-    # Check for the changes in each subfolder
-		    if echo "$MODIFIED" | grep -q '^vpc/';then
-	        MODIFIED_DIRS+=("vpc)
-	  	  fi
-    # Check for the changes in each subfolder
-		    if echo "$MODIFIED" | grep -q '^api/';then
-	        MODIFIED_DIRS+=("api)
-	  	  fi
+     runs-on: ubuntu-latest
+	#outputs: 
+	#  modified_dirs: $ {{steps.detect.outputs.modified_dirs }}
+     steps: 
+       - name: Checkout Repository
+	 uses: actions/checkout@v3
 
-    # Output modified directories as a comma separated string
+       - name: Set Working Directory
+         run: echo "Working Directory"
+  
+       - name: Detect changes
+	 run: |
+	      MODIFIED= $(git diff --name-only HEAD~1 HEAD)
+	      MODIFIED_DIRS=()
+              if echo "$MODIFIED" | grep -q '^vpc/';then
+	        MODIFIED_DIRS+=("vpc)
+	      fi
+	      if echo "$MODIFIED" | grep -q '^api/';then
+	        MODIFIED_DIRS+=("api)
+	      fi
 	      echo "modified_dirs=$(IFS=,;echo "${MODIFIED_DIRS[*]}")">>$GITHUB_OUTPUT
-       
   terraform-checks:
-      needs:detect-changes
-      runs-on: ubuntu-latest
+    needs:detect-changes
+    runs-on: ubuntu-latest
       strategy: 
           matrix:
             directory: ${{fromJson(needs.detect-changes.outputs.modified_dirs)}}
