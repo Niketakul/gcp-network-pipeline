@@ -55,9 +55,6 @@ jobs:
       run: terraform apply -auto-approve -input=false
 [10:58 PM, 1/11/2025] Niketa: name: Terraform Lint
 on:
- push:
-   branches:
-     - main
  pull_request:
 jobs:
  lint:
