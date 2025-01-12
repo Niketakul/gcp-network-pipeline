@@ -10,7 +10,7 @@ permissions:
   
 
 env:
-  GH_TOKEN: ${{ secrets.GH_TOKEN }}
+  GH_TOKEN: ${{ secrets.GCP_AUTHENTICATION }}
  
 jobs:
   detect-changes: 
