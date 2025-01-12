@@ -1,0 +1,152 @@
+name: GCP Terraform Workflow
+
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  id-token: write
+  
+
+env: 
+  WORKING-DIRECTORY: terraform-google-cloud-project-apis
+  GH_TOKEN: ${{ secrets.GH_TOKEN }}
+ 
+  
+jobs:
+  wiz-scan:
+    uses: QDXEnterpriseOrg/qdx-reusable-workflows/.github/workflows/wiz-scan-iac.yaml@main
+    secrets: inherit
+
+
+  init:
+    needs: wiz-scan
+    runs-on: arc-rs-nonprod
+    defaults:
+      run: 
+        shell: bash       
+
+    steps:
+      # Checkout repository to GitHub action runner
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - id: auth
+        uses: google-github-actions/auth@v3.4.8
+        with:
+          workload_identity_provider: 'projects/974223802243/locations/global/workloadIdentityPools/quest-github/providers/github'
+          service_account: '${{ secrets.SA }}'
+
+      # Replacing placeholders in Terraform files
+      - name: Replacing placeholders
+        run: |
+          echo "***** Replacing placeholders with GIT_TOKEN *****"
+          sed -i "s|\[PASSWORD\]|${{ env.GH_TOKEN }}|g" *.tf
+        working-directory: ${{ env.WORKING-DIRECTORY }}
+
+      # Terraform Init
+      - name: Terraform Init
+        #working-directory: ${{ env.WORKING-DIRECTORY }}
+        run: |
+          pwd
+          ls -R
+          cd ./terraform-google-cloud-project-apis
+          pwd
+          ls -R
+          terraform init -upgrade 
+          #terraform init 
+        
+        
+
+  validate:
+    runs-on: arc-rs-nonprod
+    needs: init
+
+    steps:
+      # Checkout repository to GitHub action runner
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      #- id: auth
+        #uses: google-github-actions/auth@v0.4.0
+        #with:
+          # workload_identity_provider: '${{ secrets.WIF }}'
+          # service_account: '${{ secrets.SA }}'
+
+      # Replacing placeholders in Terraform files
+      - name: Replacing placeholders
+        run: |
+          echo "***** Replacing placeholders with GIT_TOKEN *****"
+          sed -i "s|\[PASSWORD\]|${{ env.GIT_TOKEN }}|g" *.tf
+        working-directory: ${{ env.WORKING-DIRECTORY }}
+ 
+
+  tflint:
+    needs: validate
+    uses: ./.github/workflows/lint.yml
+
+  plan:
+    runs-on: arc-rs-nonprod
+    needs: tflint
+
+    steps:
+      # Checkout repository to GitHub action runner
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      # - id: auth
+      #   uses: google-github-actions/auth@v0.4.0
+      #   with:
+      #     workload_identity_provider: '${{ secrets.WIF }}'
+      #     service_account: '${{ secrets.SA }}'
+
+      # Replacing placeholders in Terraform files
+      - name: Replacing placeholders
+        run: |
+          echo "***** Replacing placeholders with GIT_TOKEN *****"
+          sed -i "s|\[PASSWORD\]|${{ env.GH_TOKEN }}|g" *.tf
+        working-directory: ${{ env.WORKING-DIRECTORY }}
+
+      # Terraform Plan
+      - name: Terraform Plan
+        working-directory: ${{ env.WORKING-DIRECTORY }}
+        run: |
+          terraform init -upgrade
+          terraform plan --var-file=api.tfvars
+
+  apply:
+    runs-on: arc-rs-nonprod
+    needs: plan
+    environment: Production
+    if: github.ref == 'refs/heads/main'
+
+
+    steps:
+      # Checkout repository to GitHub action runner
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      # - id: auth
+      #   uses: google-github-actions/auth@v0.4.0
+      #   with:
+      #     workload_identity_provider: '${{ secrets.WIF }}'
+      #     service_account: '${{ secrets.SA }}'
+
+      # Replacing placeholders in Terraform files
+      - name: Replacing placeholders
+        run: |
+          echo "***** Replacing placeholders with GIT_TOKEN *****"
+          sed -i "s|\[PASSWORD\]|${{ env.GH_TOKEN }}|g" *.tf
+        working-directory: ${{ env.WORKING-DIRECTORY }}
+
+      # Terraform Apply
+      - name: Terraform Apply
+        working-directory: ${{ env.WORKING-DIRECTORY }}
+        run: |
+          terraform init -upgrade
+          terraform apply --var-file=api.tfvars  --auto-approve -input=false
+          terraform destroy --var-file=api.tfvars  --auto-approve
+
+
+    
