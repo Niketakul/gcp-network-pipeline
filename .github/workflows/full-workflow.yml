@@ -13,14 +13,12 @@ env:
 jobs:
   detect-changes: 
      runs-on: ubuntu-latest
-	#outputs: 
-	#  modified_dirs: $ {{steps.detect.outputs.modified_dirs }}
-     steps: 
+     outputs: 
+       modified_dirs: ${{steps.detect.outputs.modified_dirs }}
+  
+     steps:
        - name: Checkout Repository
 	 uses: actions/checkout@v3
-
-       - name: Set Working Directory
-         run: echo "Working Directory"
   
        - name: Detect changes
 	 run: |
