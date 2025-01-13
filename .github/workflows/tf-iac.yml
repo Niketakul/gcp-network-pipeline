@@ -20,6 +20,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - id: auth
+        uses: google-github-actions/auth@v2.0.0
+        with: 
+          secret.GCP_
+          
+
       - name: Terraform Init (Emulation)
         run: |
           cd ${{ github.workspace }}
