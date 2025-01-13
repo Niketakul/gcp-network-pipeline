@@ -14,7 +14,7 @@ jobs:
   detect-changes: 
      runs-on: ubuntu-latest
      outputs: 
-       modified_dirs: ${{steps.detect.outputs.modified_dirs }}
+       modified_dirs: ${{ steps.detect.outputs.modified_dirs }}
   
      steps:
        - name: Checkout Repository
