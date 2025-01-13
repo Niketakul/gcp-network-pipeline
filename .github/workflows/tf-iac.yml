@@ -1,41 +1,41 @@
-name: GCP Terraform Workflow
+name: Terraform Workflow
+
 on:
   workflow_dispatch:
+  pull_request:
+    branches: 
+      - main
+    types: [ opened, synchronize, reopened ]
+
 permissions:
-  contents: read
-  security-events: write
-  actions: read
   id-token: write
-  
-env:
-  GH_TOKEN: ${{ secrets.GCP_AUTHENTICATION }}
- 
+  contents: read
+
 jobs:
-  
-   steps:
-       - name: Checkout Repository
-	 uses: actions/checkout@v3
-  
-       - name: Detect changes
-	 run: |
-	      MODIFIED= $(git diff --name-only HEAD~1 HEAD)
-	      MODIFIED_DIRS=()
-              if echo "$MODIFIED" | grep -q '^vpc/';then
-	        MODIFIED_DIRS+=("vpc)
-	      fi
-	      if echo "$MODIFIED" | grep -q '^api/';then
-	        MODIFIED_DIRS+=("api)
-	      fi
-	      echo "modified_dirs=$(IFS=,;echo "${MODIFIED_DIRS[*]}")">>$GITHUB_OUTPUT
-  terraform-checks:
-    needs:detect-changes
-    runs-on: ubuntu-latest
-      strategy: 
-          matrix:
-            directory: ${{fromJson(needs.detect-changes.outputs.modified_dirs)}}
-          steps: 
-            -name: Checkout Repository
-             uses: actions/checkout@v3
-    
-           - name: Set Working Directory
-             run: echo "Working Directory is ${{ matrix.directory }}
+  init:
+    runs-on: arc-rs-nonprod
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Terraform Init (Emulation)
+        run: |
+          cd ${{ github.workspace }}
+          terraform init
+          terraform validate
+  plan:
+    runs-on: arc-rs-nonprod
+    needs: init
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Terraform Plan
+        run: |
+          cd ${{ github.workspace }}
+          terraform init -reconfigure 
+          terraform plan -var-file=*.tfvars -lock=false
